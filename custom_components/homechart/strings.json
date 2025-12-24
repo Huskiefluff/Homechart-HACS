@@ -3,9 +3,9 @@
     "step": {
       "user": {
         "title": "Connect to Homechart",
-        "description": "Enter your Homechart API key. You can create one in Homechart under Settings > Account > Sessions > Create API Key.",
+        "description": "Enter your Homechart session credentials. Go to Settings > Sessions > click +Add. Copy both the session ID and TOKEN shown. Enter them as: ID:TOKEN (e.g., abc123:xyz789)",
         "data": {
-          "api_key": "API Key",
+          "api_key": "Session ID:Token",
           "url": "Homechart URL (for self-hosted)",
           "name": "Display Name"
         }
