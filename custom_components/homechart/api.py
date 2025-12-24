@@ -170,9 +170,18 @@ class HomechartApi:
                 for household in households:
                     member_list = household.get("members", [])
                     for member in member_list:
+                        # Use 'id' field - this matches what's used in task assignees
+                        # Also try authAccountID as fallback
+                        member_id = member.get("id") or member.get("authAccountID", "")
+                        _LOGGER.debug(
+                            "Found member: %s with id=%s, authAccountID=%s",
+                            member.get("name"),
+                            member.get("id"),
+                            member.get("authAccountID"),
+                        )
                         members.append(
                             HomechartHouseholdMember(
-                                id=member.get("authAccountID", ""),
+                                id=member_id,
                                 name=member.get("name", "Unknown"),
                                 email=member.get("emailAddress"),
                             )
@@ -226,6 +235,28 @@ class HomechartApi:
                         pass
 
                 project_id = item.get("planProjectID")
+                
+                # Try both 'assignees' and 'participants' - Homechart might use either
+                assignees = item.get("assignees", []) or []
+                if not assignees:
+                    assignees = item.get("participants", []) or []
+                
+                # Also try authHouseholdMembers or similar variations
+                if not assignees:
+                    assignees = item.get("authHouseholdMembers", []) or []
+                
+                # Debug log to see what's in the raw item
+                _LOGGER.debug(
+                    "Task '%s' raw data keys: %s",
+                    item.get("name"),
+                    list(item.keys()),
+                )
+                _LOGGER.debug(
+                    "Task '%s' assignees=%s, participants=%s",
+                    item.get("name"),
+                    item.get("assignees"),
+                    item.get("participants"),
+                )
 
                 tasks.append(
                     HomechartTask(
@@ -234,7 +265,7 @@ class HomechartApi:
                         details=item.get("details"),
                         done=item.get("done", False),
                         due_date=due_date,
-                        assignees=item.get("assignees", []) or [],
+                        assignees=assignees,
                         tags=item.get("tags", []) or [],
                         color=item.get("color"),
                         project_id=project_id,
