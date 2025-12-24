@@ -181,18 +181,23 @@ class HomechartApi:
                             member_list[0]
                         )
                     for member in member_list:
-                        # Use 'id' field - this matches what's used in task assignees
-                        # Also try authAccountID as fallback
-                        member_id = member.get("id") or member.get("authAccountID", "")
+                        # Events use authAccountID for participants
+                        # Tasks use authAccountID for assignees
+                        # So we need to use authAccountID as our primary ID
+                        auth_account_id = member.get("authAccountID", "")
+                        member_id = member.get("id", "")
+                        
                         _LOGGER.debug(
                             "Found member: %s with id=%s, authAccountID=%s",
                             member.get("name"),
-                            member.get("id"),
-                            member.get("authAccountID"),
+                            member_id,
+                            auth_account_id,
                         )
+                        
+                        # Use authAccountID as primary since that's what events/tasks use
                         members.append(
                             HomechartHouseholdMember(
-                                id=member_id,
+                                id=auth_account_id,  # Use authAccountID!
                                 name=member.get("name", "Unknown"),
                                 email=member.get("emailAddress"),
                             )
@@ -233,6 +238,14 @@ class HomechartApi:
                     "HOMECHART DEBUG - First task raw data: %s",
                     raw_items[0]
                 )
+                # Also find and log a task with assignees
+                for item in raw_items[:20]:
+                    if item.get("assignees"):
+                        _LOGGER.warning(
+                            "HOMECHART DEBUG - Task WITH assignees: %s",
+                            item
+                        )
+                        break
             
             for item in raw_items:
                 due_date = None
