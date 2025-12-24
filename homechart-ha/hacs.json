@@ -1,0 +1,7 @@
+{
+  "name": "Homechart",
+  "render_readme": true,
+  "domains": ["sensor", "calendar", "todo"],
+  "iot_class": "cloud_polling",
+  "homeassistant": "2024.1.0"
+}
