@@ -57,20 +57,42 @@ class HomechartCalendar(CoordinatorEntity, CalendarEntity):
         """Return the next upcoming event."""
         events = self._get_all_calendar_events()
         now = dt_util.now()
+        today = now.date()
 
         # Filter to current/upcoming events
         upcoming = []
         for event in events:
-            if event.end and event.end > now:
+            # Handle both date and datetime objects
+            event_end = event.end
+            event_start = event.start
+            
+            # Convert date to datetime for comparison if needed
+            if isinstance(event_end, date) and not isinstance(event_end, datetime):
+                # All-day event - compare dates
+                if event_end >= today:
+                    upcoming.append(event)
+            elif event_end and event_end > now:
                 upcoming.append(event)
-            elif event.start and event.start.date() >= now.date():
-                upcoming.append(event)
+            elif event_start:
+                # Check start date as fallback
+                if isinstance(event_start, date) and not isinstance(event_start, datetime):
+                    if event_start >= today:
+                        upcoming.append(event)
+                elif event_start >= now:
+                    upcoming.append(event)
 
         if not upcoming:
             return None
 
         # Sort by start time
-        upcoming.sort(key=lambda e: e.start if e.start else datetime.max.replace(tzinfo=now.tzinfo))
+        def sort_key(e):
+            if isinstance(e.start, datetime):
+                return e.start
+            elif isinstance(e.start, date):
+                return datetime.combine(e.start, datetime.min.time(), tzinfo=now.tzinfo)
+            return datetime.max.replace(tzinfo=now.tzinfo)
+        
+        upcoming.sort(key=sort_key)
         return upcoming[0] if upcoming else None
 
     async def async_get_events(
@@ -81,18 +103,33 @@ class HomechartCalendar(CoordinatorEntity, CalendarEntity):
     ) -> list[CalendarEvent]:
         """Return calendar events within a datetime range."""
         events = self._get_all_calendar_events()
+        start_d = start_date.date() if isinstance(start_date, datetime) else start_date
+        end_d = end_date.date() if isinstance(end_date, datetime) else end_date
 
         # Filter by date range
         filtered = []
         for event in events:
-            if event.start and event.end:
-                # Event overlaps with requested range
-                if event.start < end_date and event.end > start_date:
-                    filtered.append(event)
-            elif event.start:
-                # All-day or no end time
-                if start_date <= event.start <= end_date:
-                    filtered.append(event)
+            event_start = event.start
+            event_end = event.end
+            
+            # Normalize to dates for comparison
+            if isinstance(event_start, datetime):
+                ev_start_d = event_start.date()
+            elif isinstance(event_start, date):
+                ev_start_d = event_start
+            else:
+                continue
+                
+            if isinstance(event_end, datetime):
+                ev_end_d = event_end.date()
+            elif isinstance(event_end, date):
+                ev_end_d = event_end
+            else:
+                ev_end_d = ev_start_d
+            
+            # Check if event overlaps with requested range
+            if ev_start_d <= end_d and ev_end_d >= start_d:
+                filtered.append(event)
 
         return filtered
 
