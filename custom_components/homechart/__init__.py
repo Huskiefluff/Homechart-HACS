@@ -7,9 +7,10 @@ from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import HomechartApi, HomechartApiError
+from .api import HomechartApi, HomechartApiError, HomechartHouseholdMember
 from .const import (
     CONF_API_KEY,
     CONF_URL,
@@ -38,19 +39,49 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("Failed to connect to Homechart API")
         return False
 
+    # Fetch household members for device creation
+    members = await hass.async_add_executor_job(api.get_household_members)
+    _LOGGER.debug("Found %d household members: %s", len(members), [m.name for m in members])
+
     # Create coordinators
-    task_coordinator = HomechartTaskCoordinator(hass, api)
-    event_coordinator = HomechartEventCoordinator(hass, api)
+    task_coordinator = HomechartTaskCoordinator(hass, api, members)
+    event_coordinator = HomechartEventCoordinator(hass, api, members)
 
     # Fetch initial data
     await task_coordinator.async_config_entry_first_refresh()
     await event_coordinator.async_config_entry_first_refresh()
+
+    # Register devices
+    device_registry = dr.async_get(hass)
+    
+    # Household device (main device)
+    device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"{entry.entry_id}_household")},
+        name="Homechart Household",
+        manufacturer="Homechart",
+        model="Household",
+        entry_type=dr.DeviceEntryType.SERVICE,
+    )
+    
+    # Per-member devices
+    for member in members:
+        device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, f"{entry.entry_id}_{member.id}")},
+            name=f"Homechart: {member.name}",
+            manufacturer="Homechart",
+            model="Member",
+            entry_type=dr.DeviceEntryType.SERVICE,
+            via_device=(DOMAIN, f"{entry.entry_id}_household"),
+        )
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "api": api,
         "task_coordinator": task_coordinator,
         "event_coordinator": event_coordinator,
+        "members": members,
     }
 
     # Set up platforms
@@ -75,7 +106,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def handle_add_task(call: ServiceCall) -> None:
         """Handle add task service call."""
-        # Get the first entry (for single-account setups)
         for entry_data in hass.data[DOMAIN].values():
             api: HomechartApi = entry_data["api"]
             coordinator = entry_data["task_coordinator"]
@@ -90,7 +120,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 call.data.get("tags"),
             )
 
-            # Refresh the coordinator
             await coordinator.async_request_refresh()
             break
 
@@ -140,7 +169,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 class HomechartTaskCoordinator(DataUpdateCoordinator):
     """Coordinator to fetch task data."""
 
-    def __init__(self, hass: HomeAssistant, api: HomechartApi) -> None:
+    def __init__(
+        self, hass: HomeAssistant, api: HomechartApi, members: list[HomechartHouseholdMember]
+    ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
@@ -149,6 +180,9 @@ class HomechartTaskCoordinator(DataUpdateCoordinator):
             update_interval=SCAN_INTERVAL,
         )
         self.api = api
+        self.members = members
+        # Build ID to name mapping
+        self.member_map = {m.id: m for m in members}
 
     async def _async_update_data(self):
         """Fetch data from API."""
@@ -159,6 +193,8 @@ class HomechartTaskCoordinator(DataUpdateCoordinator):
             return {
                 "tasks": tasks,
                 "projects": projects,
+                "members": self.members,
+                "member_map": self.member_map,
             }
         except HomechartApiError as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
@@ -167,7 +203,9 @@ class HomechartTaskCoordinator(DataUpdateCoordinator):
 class HomechartEventCoordinator(DataUpdateCoordinator):
     """Coordinator to fetch event data."""
 
-    def __init__(self, hass: HomeAssistant, api: HomechartApi) -> None:
+    def __init__(
+        self, hass: HomeAssistant, api: HomechartApi, members: list[HomechartHouseholdMember]
+    ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
@@ -176,11 +214,17 @@ class HomechartEventCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(minutes=15),
         )
         self.api = api
+        self.members = members
+        self.member_map = {m.id: m for m in members}
 
     async def _async_update_data(self):
         """Fetch data from API."""
         try:
             events = await self.hass.async_add_executor_job(self.api.get_events)
-            return {"events": events}
+            return {
+                "events": events,
+                "members": self.members,
+                "member_map": self.member_map,
+            }
         except HomechartApiError as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
