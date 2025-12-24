@@ -108,6 +108,7 @@ class HomechartHouseholdSensor(CoordinatorEntity, SensorEntity):
                 "name": task.name,
                 "due_date": task.due_date.isoformat() if task.due_date else None,
                 "done": task.done,
+                "raw_assignees": task.assignees,  # Debug: show raw assignee IDs
             }
             if task.details:
                 task_dict["details"] = task.details
@@ -124,9 +125,14 @@ class HomechartHouseholdSensor(CoordinatorEntity, SensorEntity):
                 task_dict["tags"] = task.tags
             task_list.append(task_dict)
 
+        # Debug: show member map
+        member_map = self.coordinator.data.get("member_map", {})
+        member_debug = {mid: m.name if hasattr(m, 'name') else str(m) for mid, m in member_map.items()}
+
         return {
             ATTR_COUNT: len(tasks),
             ATTR_TASKS: task_list,
+            "debug_member_map": member_debug,
         }
 
     def _get_filtered_tasks(self) -> list:
