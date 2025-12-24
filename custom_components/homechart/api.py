@@ -76,12 +76,42 @@ class HomechartApi:
     """Homechart API client."""
 
     def __init__(self, url: str, api_key: str) -> None:
-        """Initialize the API client."""
+        """Initialize the API client.
+        
+        api_key can be either:
+        - Just the token/key: "019b4e1d-d630-79a9-bf23-49110cff029b"
+        - Or id:key format: "019b4e1d-d630-79a4-9267-708fd080f79e:019b4e1d-d630-79a9-bf23-49110cff029b"
+        """
         self._url = url.rstrip("/")
         self._api_key = api_key
         self._session = requests.Session()
-        # Set up cookie-based auth with the API key
-        self._session.cookies.set("homechart", api_key)
+        
+        # Parse if id:key format provided
+        if ":" in api_key:
+            session_id, session_key = api_key.split(":", 1)
+        else:
+            session_id = None
+            session_key = api_key
+        
+        # Homechart uses cookie-based auth
+        # The cookie format appears to be: homechart=<session_id>|<session_key>
+        # Or possibly just the key
+        if session_id:
+            cookie_value = f"{session_id}|{session_key}"
+            self._session.cookies.set("homechart", cookie_value, domain="web.homechart.app")
+            self._session.cookies.set("homechart", cookie_value, domain="homechart.app")
+        
+        # Also try just the key in various formats
+        self._session.cookies.set("homechart", session_key, domain="web.homechart.app")
+        
+        # Try Authorization header as well
+        self._session.headers.update({
+            "Authorization": f"Bearer {session_key}",
+            "x-homechart-key": session_key,
+        })
+        
+        if session_id:
+            self._session.headers["x-homechart-id"] = session_id
 
     def _request(
         self,
