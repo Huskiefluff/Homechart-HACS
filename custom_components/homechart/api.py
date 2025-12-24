@@ -166,9 +166,20 @@ class HomechartApi:
         if isinstance(data, dict) and "dataValue" in data:
             households = data.get("dataValue", [])
             if households:
+                # Log raw household data to see structure
+                _LOGGER.warning(
+                    "HOMECHART DEBUG - First household raw data: %s",
+                    households[0]
+                )
+                
                 # Get members from the first (primary) household
                 for household in households:
                     member_list = household.get("members", [])
+                    if member_list:
+                        _LOGGER.warning(
+                            "HOMECHART DEBUG - First member raw data: %s",
+                            member_list[0]
+                        )
                     for member in member_list:
                         # Use 'id' field - this matches what's used in task assignees
                         # Also try authAccountID as fallback
@@ -214,8 +225,16 @@ class HomechartApi:
         # Get projects for name lookup
         projects = {p.id: p.name for p in self.get_projects()}
 
+        # Log the raw first item to see all available fields
         if isinstance(data, dict) and "dataValue" in data:
-            for item in data.get("dataValue", []):
+            raw_items = data.get("dataValue", [])
+            if raw_items:
+                _LOGGER.warning(
+                    "HOMECHART DEBUG - First task raw data: %s",
+                    raw_items[0]
+                )
+            
+            for item in raw_items:
                 due_date = None
                 if item.get("dueDate"):
                     try:
@@ -407,7 +426,14 @@ class HomechartApi:
         events = []
 
         if isinstance(data, dict) and "dataValue" in data:
-            for item in data.get("dataValue", []):
+            raw_items = data.get("dataValue", [])
+            if raw_items:
+                _LOGGER.warning(
+                    "HOMECHART DEBUG - First event raw data: %s",
+                    raw_items[0]
+                )
+            
+            for item in raw_items:
                 event_start = None
                 event_end = None
 
@@ -433,6 +459,21 @@ class HomechartApi:
                 if end_date and event_start and event_start > end_date:
                     continue
 
+                # Try both 'participants' and 'assignees'
+                participants = item.get("participants", []) or []
+                if not participants:
+                    participants = item.get("assignees", []) or []
+                if not participants:
+                    participants = item.get("authHouseholdMembers", []) or []
+
+                # Debug log
+                _LOGGER.debug(
+                    "Event '%s' raw keys: %s, participants=%s",
+                    item.get("name"),
+                    list(item.keys()),
+                    participants,
+                )
+
                 events.append(
                     HomechartEvent(
                         id=item.get("id", ""),
@@ -443,7 +484,7 @@ class HomechartApi:
                         date_end=event_end,
                         time_start=item.get("timeStart"),
                         duration=item.get("duration"),
-                        participants=item.get("participants", []) or [],
+                        participants=participants,
                         color=item.get("color"),
                         all_day=not bool(item.get("timeStart")),
                     )
