@@ -45,6 +45,7 @@ class HomechartEvent:
     color: int | None = None
     all_day: bool = True
     recurrence: dict | None = None  # Recurrence info from API
+    skip_days: list[date] = field(default_factory=list)  # Dates to skip for recurring
 
 
 @dataclass
@@ -496,6 +497,14 @@ class HomechartApi:
                     participants,
                 )
 
+                # Parse skipDays for recurring events
+                skip_days = []
+                for skip in item.get("skipDays") or []:
+                    try:
+                        skip_days.append(date.fromisoformat(skip))
+                    except (ValueError, TypeError):
+                        pass
+
                 events.append(
                     HomechartEvent(
                         id=item.get("id", ""),
@@ -510,6 +519,7 @@ class HomechartApi:
                         color=item.get("color"),
                         all_day=not bool(item.get("timeStart")),
                         recurrence=item.get("recurrence"),
+                        skip_days=skip_days,
                     )
                 )
 
