@@ -12,6 +12,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import HomechartApi, HomechartApiError, HomechartHouseholdMember
 from .const import (
+    CALENDAR_SCAN_INTERVAL,
     CONF_API_KEY,
     CONF_URL,
     DEFAULT_URL,
@@ -211,7 +212,7 @@ class HomechartEventCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="Homechart Events",
-            update_interval=timedelta(minutes=15),
+            update_interval=CALENDAR_SCAN_INTERVAL,
         )
         self.api = api
         self.members = members
