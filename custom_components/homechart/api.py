@@ -44,6 +44,7 @@ class HomechartEvent:
     participants: list[str] = field(default_factory=list)
     color: int | None = None
     all_day: bool = True
+    recurrence: dict | None = None  # Recurrence info from API
 
 
 @dataclass
@@ -445,6 +446,14 @@ class HomechartApi:
                     "HOMECHART DEBUG - First event raw data: %s",
                     raw_items[0]
                 )
+                # Log any event with recurrence
+                for item in raw_items[:30]:
+                    if item.get("recurrence"):
+                        _LOGGER.warning(
+                            "HOMECHART DEBUG - Event WITH recurrence: %s",
+                            item
+                        )
+                        break
             
             for item in raw_items:
                 event_start = None
@@ -500,6 +509,7 @@ class HomechartApi:
                         participants=participants,
                         color=item.get("color"),
                         all_day=not bool(item.get("timeStart")),
+                        recurrence=item.get("recurrence"),
                     )
                 )
 
