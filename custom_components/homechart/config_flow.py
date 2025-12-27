@@ -151,7 +151,7 @@ class HomechartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
-    ) -> HomechartOptionsFlow:
+    ) -> config_entries.OptionsFlow:
         """Get the options flow for this handler."""
         return HomechartOptionsFlow(config_entry)
 
@@ -161,7 +161,7 @@ class HomechartOptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
+        self._config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -176,13 +176,13 @@ class HomechartOptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         "show_completed_tasks",
-                        default=self.config_entry.options.get(
+                        default=self._config_entry.options.get(
                             "show_completed_tasks", False
                         ),
                     ): selector.BooleanSelector(),
                     vol.Optional(
                         "upcoming_days",
-                        default=self.config_entry.options.get("upcoming_days", 7),
+                        default=self._config_entry.options.get("upcoming_days", 7),
                     ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
                             min=1,
