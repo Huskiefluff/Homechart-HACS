@@ -14,8 +14,8 @@ CONF_API_KEY: Final = "api_key"
 CONF_URL: Final = "url"
 
 # Update intervals
-SCAN_INTERVAL: Final = timedelta(minutes=5)
-CALENDAR_SCAN_INTERVAL: Final = timedelta(minutes=15)
+SCAN_INTERVAL: Final = timedelta(minutes=1)
+CALENDAR_SCAN_INTERVAL: Final = timedelta(minutes=1)
 
 # Platforms
 PLATFORMS: Final = ["sensor", "calendar", "todo"]
