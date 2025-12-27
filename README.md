@@ -20,7 +20,7 @@ A Home Assistant integration for [Homechart](https://homechart.app) - your house
 
 1. Open HACS in Home Assistant
 2. Click the three dots menu → Custom repositories
-3. Add `https://github.com/huskie/homechart-ha` as an Integration
+3. Add `Add `https://github.com/Huskiefluff/Homechart-HACS` as an Integration` as an Integration
 4. Search for "Homechart" and install
 5. Restart Home Assistant
 
@@ -220,7 +220,7 @@ This way, if you enable all calendars, each event appears exactly once.
 
 ## Contributing
 
-Issues and PRs welcome at [github.com/huskie/homechart-ha](https://github.com/huskie/homechart-ha)
+Issues and PRs welcome at [github.com/huskie/homechart-ha](Add `https://github.com/Huskiefluff/Homechart-HACS` as an Integration)
 
 ## License
 
