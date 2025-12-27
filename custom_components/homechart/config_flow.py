@@ -91,6 +91,9 @@ class HomechartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle reconfiguration."""
         errors: dict[str, str] = {}
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        
+        if entry is None:
+            return self.async_abort(reason="reconfigure_failed")
 
         if user_input is not None:
             api = HomechartApi(
@@ -102,10 +105,14 @@ class HomechartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 valid = await self.hass.async_add_executor_job(api.test_connection)
 
                 if valid:
-                    return self.async_update_reload_and_abort(
+                    # Update the config entry data
+                    self.hass.config_entries.async_update_entry(
                         entry,
                         data={**entry.data, **user_input},
                     )
+                    # Reload the integration
+                    await self.hass.config_entries.async_reload(entry.entry_id)
+                    return self.async_abort(reason="reconfigure_successful")
                 else:
                     errors["base"] = "invalid_auth"
 
