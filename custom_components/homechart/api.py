@@ -168,20 +168,9 @@ class HomechartApi:
         if isinstance(data, dict) and "dataValue" in data:
             households = data.get("dataValue", [])
             if households:
-                # Log raw household data to see structure
-                _LOGGER.warning(
-                    "HOMECHART DEBUG - First household raw data: %s",
-                    households[0]
-                )
-                
                 # Get members from the first (primary) household
                 for household in households:
                     member_list = household.get("members", [])
-                    if member_list:
-                        _LOGGER.warning(
-                            "HOMECHART DEBUG - First member raw data: %s",
-                            member_list[0]
-                        )
                     for member in member_list:
                         # Events use authAccountID for participants
                         # Tasks use authAccountID for assignees
@@ -232,22 +221,8 @@ class HomechartApi:
         # Get projects for name lookup
         projects = {p.id: p.name for p in self.get_projects()}
 
-        # Log the raw first item to see all available fields
         if isinstance(data, dict) and "dataValue" in data:
             raw_items = data.get("dataValue", [])
-            if raw_items:
-                _LOGGER.warning(
-                    "HOMECHART DEBUG - First task raw data: %s",
-                    raw_items[0]
-                )
-                # Also find and log a task with assignees
-                for item in raw_items[:20]:
-                    if item.get("assignees"):
-                        _LOGGER.warning(
-                            "HOMECHART DEBUG - Task WITH assignees: %s",
-                            item
-                        )
-                        break
             
             for item in raw_items:
                 due_date = None
@@ -442,19 +417,6 @@ class HomechartApi:
 
         if isinstance(data, dict) and "dataValue" in data:
             raw_items = data.get("dataValue", [])
-            if raw_items:
-                _LOGGER.warning(
-                    "HOMECHART DEBUG - First event raw data: %s",
-                    raw_items[0]
-                )
-                # Log ALL events with recurrence
-                for item in raw_items:
-                    if item.get("recurrence"):
-                        _LOGGER.warning(
-                            "HOMECHART DEBUG - Recurring event '%s': recurrence=%s",
-                            item.get("name"),
-                            item.get("recurrence"),
-                        )
             
             for item in raw_items:
                 event_start = None
