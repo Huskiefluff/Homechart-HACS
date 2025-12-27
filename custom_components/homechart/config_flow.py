@@ -85,6 +85,61 @@ class HomechartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle reconfiguration."""
+        errors: dict[str, str] = {}
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+
+        if user_input is not None:
+            api = HomechartApi(
+                url=user_input.get(CONF_URL, DEFAULT_URL),
+                api_key=user_input[CONF_API_KEY],
+            )
+
+            try:
+                valid = await self.hass.async_add_executor_job(api.test_connection)
+
+                if valid:
+                    return self.async_update_reload_and_abort(
+                        entry,
+                        data={**entry.data, **user_input},
+                    )
+                else:
+                    errors["base"] = "invalid_auth"
+
+            except HomechartAuthError:
+                errors["base"] = "invalid_auth"
+            except HomechartApiError:
+                errors["base"] = "cannot_connect"
+            except Exception:
+                _LOGGER.exception("Unexpected exception")
+                errors["base"] = "unknown"
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_API_KEY, 
+                        default=entry.data.get(CONF_API_KEY, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_URL, 
+                        default=entry.data.get(CONF_URL, DEFAULT_URL)
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(type=selector.TextSelectorType.URL)
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
     @staticmethod
     @callback
     def async_get_options_flow(
