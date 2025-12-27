@@ -317,7 +317,7 @@ class HomechartApi:
     def create_task(
         self,
         name: str,
-        due_date: date | None = None,
+        due_date: date | str | None = None,
         details: str | None = None,
         project_id: str | None = None,
         assignees: list[str] | None = None,
@@ -327,7 +327,8 @@ class HomechartApi:
         payload: dict[str, Any] = {"name": name}
 
         if due_date:
-            payload["dueDate"] = due_date.isoformat()
+            due_date_str = due_date.isoformat() if hasattr(due_date, 'isoformat') else str(due_date)
+            payload["dueDate"] = due_date_str
         if details:
             payload["details"] = details
         if project_id:
@@ -490,8 +491,8 @@ class HomechartApi:
     def create_event(
         self,
         name: str,
-        date_start: date,
-        date_end: date | None = None,
+        date_start: date | str,
+        date_end: date | str | None = None,
         time_start: str | None = None,
         duration: int | None = None,
         details: str | None = None,
@@ -499,13 +500,17 @@ class HomechartApi:
         participants: list[str] | None = None,
     ) -> HomechartEvent:
         """Create a calendar event."""
+        # Handle both date objects and strings
+        date_start_str = date_start.isoformat() if hasattr(date_start, 'isoformat') else str(date_start)
+        
         payload: dict[str, Any] = {
             "name": name,
-            "dateStart": date_start.isoformat(),
+            "dateStart": date_start_str,
         }
 
         if date_end:
-            payload["dateEnd"] = date_end.isoformat()
+            date_end_str = date_end.isoformat() if hasattr(date_end, 'isoformat') else str(date_end)
+            payload["dateEnd"] = date_end_str
         if time_start:
             payload["timeStart"] = time_start
         if duration:
