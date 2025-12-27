@@ -141,40 +141,31 @@ class HomechartHouseholdCalendar(CoordinatorEntity, CalendarEntity):
         return filtered
 
     def _get_all_calendar_events(self) -> list[CalendarEvent]:
-        """Get all calendar events including tasks with due dates."""
+        """Get calendar events/tasks that are NOT assigned to specific members (household-wide only)."""
         events: list[CalendarEvent] = []
         tz = dt_util.get_default_time_zone()
 
         if self.coordinator.data:
             for hc_event in self.coordinator.data.get("events", []):
-                # Expand recurring events
-                expanded_events = self._expand_recurring_event(hc_event, tz)
-                events.extend(expanded_events)
+                # Only show events with NO participants (household-wide)
+                if not hc_event.participants:
+                    expanded_events = self._expand_recurring_event(hc_event, tz)
+                    events.extend(expanded_events)
 
         if self._task_coordinator.data:
             for task in self._task_coordinator.data.get("tasks", []):
                 if task.due_date and not task.done:
-                    # Include assignee names in task title
-                    member_map = self._task_coordinator.data.get("member_map", {})
-                    assignee_names = []
-                    for aid in (task.assignees or []):
-                        member = member_map.get(aid)
-                        if member:
-                            assignee_names.append(member.name)
-                    
-                    title = f"📋 {task.name}"
-                    if assignee_names:
-                        title += f" ({', '.join(assignee_names)})"
-                    
-                    events.append(
-                        CalendarEvent(
-                            summary=title,
-                            start=task.due_date,
-                            end=task.due_date + timedelta(days=1),
-                            description=task.details,
-                            uid=f"task_{task.id}",
+                    # Only show tasks with NO assignees (household-wide)
+                    if not task.assignees:
+                        events.append(
+                            CalendarEvent(
+                                summary=f"📋 {task.name}",
+                                start=task.due_date,
+                                end=task.due_date + timedelta(days=1),
+                                description=task.details,
+                                uid=f"task_{task.id}",
+                            )
                         )
-                    )
 
         return events
 
@@ -283,20 +274,8 @@ class HomechartHouseholdCalendar(CoordinatorEntity, CalendarEntity):
             start = event_date
             end = event_date + timedelta(days=1)
 
-        # Include participant names
-        member_map = self.coordinator.data.get("member_map", {})
-        participant_names = []
-        for pid in (hc_event.participants or []):
-            member = member_map.get(pid)
-            if member:
-                participant_names.append(member.name)
-
-        summary = hc_event.name
-        if participant_names:
-            summary += f" ({', '.join(participant_names)})"
-
         return CalendarEvent(
-            summary=summary,
+            summary=hc_event.name,
             start=start,
             end=end,
             description=hc_event.details,
@@ -330,20 +309,8 @@ class HomechartHouseholdCalendar(CoordinatorEntity, CalendarEntity):
             start = hc_event.date_start
             end = (hc_event.date_end or hc_event.date_start) + timedelta(days=1)
 
-        # Include participant names
-        member_map = self.coordinator.data.get("member_map", {})
-        participant_names = []
-        for pid in (hc_event.participants or []):
-            member = member_map.get(pid)
-            if member:
-                participant_names.append(member.name)
-
-        summary = hc_event.name
-        if participant_names:
-            summary += f" ({', '.join(participant_names)})"
-
         return CalendarEvent(
-            summary=summary,
+            summary=hc_event.name,
             start=start,
             end=end,
             description=hc_event.details,
@@ -471,7 +438,7 @@ class HomechartMemberCalendar(CoordinatorEntity, CalendarEntity):
                     if self._member.id in (task.assignees or []):
                         events.append(
                             CalendarEvent(
-                                summary=f"📋 {task.name}",
+                                summary=f"📋 {task.name} ({self._member.name})",
                                 start=task.due_date,
                                 end=task.due_date + timedelta(days=1),
                                 description=task.details,
@@ -579,8 +546,11 @@ class HomechartMemberCalendar(CoordinatorEntity, CalendarEntity):
             start = event_date
             end = event_date + timedelta(days=1)
 
+        # Add member name to title
+        summary = f"{hc_event.name} ({self._member.name})"
+
         return CalendarEvent(
-            summary=hc_event.name,
+            summary=summary,
             start=start,
             end=end,
             description=hc_event.details,
