@@ -215,6 +215,17 @@ class HomechartHouseholdCalendar(CoordinatorEntity, CalendarEntity):
 
         # Get skip days from the event
         skip_days = set(hc_event.skip_days or [])
+        
+        # Get weekdays filter (API: 0=Sunday, 6=Saturday)
+        # Convert to Python weekday (0=Monday, 6=Sunday)
+        weekdays_filter = None
+        if recurrence.get("weekdays"):
+            # Convert API weekdays to Python weekdays
+            # API 0 (Sun) -> Python 6, API 1 (Mon) -> Python 0, etc.
+            weekdays_filter = set()
+            for api_day in recurrence["weekdays"]:
+                python_day = (api_day - 1) % 7
+                weekdays_filter.add(python_day)
 
         # Generate occurrences
         current_date = hc_event.date_start
@@ -230,8 +241,13 @@ class HomechartHouseholdCalendar(CoordinatorEntity, CalendarEntity):
             if recurrence_end and current_date > recurrence_end:
                 break
             
-            # Only add if within window and not skipped
-            if current_date >= start_window and current_date not in skip_days:
+            # Check if this day matches the weekdays filter
+            day_matches = True
+            if weekdays_filter is not None:
+                day_matches = current_date.weekday() in weekdays_filter
+            
+            # Only add if within window, not skipped, and matches weekday
+            if current_date >= start_window and current_date not in skip_days and day_matches:
                 cal_event = self._convert_homechart_event_on_date(
                     hc_event, current_date, tz
                 )
@@ -502,6 +518,15 @@ class HomechartMemberCalendar(CoordinatorEntity, CalendarEntity):
 
         # Get skip days from the event
         skip_days = set(hc_event.skip_days or [])
+        
+        # Get weekdays filter (API: 0=Sunday, 6=Saturday)
+        # Convert to Python weekday (0=Monday, 6=Sunday)
+        weekdays_filter = None
+        if recurrence.get("weekdays"):
+            weekdays_filter = set()
+            for api_day in recurrence["weekdays"]:
+                python_day = (api_day - 1) % 7
+                weekdays_filter.add(python_day)
 
         # Generate occurrences
         current_date = hc_event.date_start
@@ -514,7 +539,12 @@ class HomechartMemberCalendar(CoordinatorEntity, CalendarEntity):
             if recurrence_end and current_date > recurrence_end:
                 break
             
-            if current_date >= start_window and current_date not in skip_days:
+            # Check if this day matches the weekdays filter
+            day_matches = True
+            if weekdays_filter is not None:
+                day_matches = current_date.weekday() in weekdays_filter
+            
+            if current_date >= start_window and current_date not in skip_days and day_matches:
                 cal_event = self._convert_homechart_event_on_date(
                     hc_event, current_date, tz
                 )
