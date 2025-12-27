@@ -6,12 +6,13 @@ A Home Assistant integration for [Homechart](https://homechart.app) - your house
 
 ## Features
 
-- **Task Sensors**: Track tasks due today, overdue tasks, and upcoming tasks
-- **Calendar Entity**: View Homechart events and tasks with due dates on your HA calendar
+- **Per-Member Calendars**: Separate calendars for each household member showing their assigned events/tasks
+- **Household Calendar**: Shows shared events and tasks (not assigned to specific members)
+- **Task Sensors**: Per-member sensors for tasks due today, overdue, and upcoming
 - **Todo Lists**: Manage tasks directly from Home Assistant's todo interface
-  - Main tasks list
-  - Separate todo lists per Homechart project
+- **Recurring Events**: Full support for daily, weekly, and custom recurrence patterns
 - **Services**: Add tasks, complete tasks, and add calendar events via automations
+- **Voice Ready**: Perfect for voice assistants - "What's on my calendar today?"
 
 ## Installation
 
@@ -31,48 +32,79 @@ A Home Assistant integration for [Homechart](https://homechart.app) - your house
 
 ## Configuration
 
-### Getting Your API Key
+### Getting Your Session Credentials
 
-1. Log into Homechart (web or app)
-2. Go to **Settings** → **Account** → **Sessions**
-3. Click **Create API Key** (or similar)
+Homechart uses session-based authentication. You'll need both the **Session ID** and **Token**.
+
+#### Step 1: Create a New Session
+
+1. Log into [Homechart](https://web.homechart.app) (or your self-hosted instance)
+2. Go to **Settings** → **Sessions**
+3. Click **+ Add** to create a new session
 4. Give it a name like "Home Assistant"
-5. Copy the generated key
+5. You'll see a **Token** displayed - copy this and save it somewhere (you won't see it again!)
+
+#### Step 2: Get the Session ID
+
+1. Still on the **Sessions** page, click the **filter icon** (funnel) at the top
+2. Enable **Show ID** filter
+3. Now you'll see an **ID** column next to each session
+4. Copy the **ID** for your "Home Assistant" session
+
+#### Step 3: Format Your API Key
+
+Combine the Session ID and Token in this format:
+
+```
+SESSION_ID:TOKEN
+```
+
+**Example:**
+```
+019b4e1d-d630-79a4-9267-708fd080f79e:019b4e1d-d630-79a9-bf23-49110cff029b
+```
 
 ### Adding the Integration
 
 1. Go to **Settings** → **Devices & Services** → **Add Integration**
 2. Search for "Homechart"
-3. Enter your API key
+3. Enter your combined `ID:TOKEN` string
 4. (Optional) If self-hosting, enter your Homechart URL
 5. Click Submit
 
+### Reconfiguring
+
+Need to update your API key or URL? Click the **Configure** button on the integration - no need to delete and re-add!
+
 ## Entities Created
 
-### Sensors
+### Calendars
 
 | Entity | Description |
 |--------|-------------|
-| `sensor.tasks_due_today` | Number of tasks due today |
-| `sensor.overdue_tasks` | Number of overdue tasks |
-| `sensor.upcoming_tasks` | Number of tasks due in the next 7 days |
+| `calendar.homechart_household_calendar` | Shared/unassigned events and tasks |
+| `calendar.homechart_[member]_calendar` | Events and tasks assigned to that member |
 
-Each sensor includes attributes with the full task list (up to 10 items) including names, due dates, projects, and assignees.
+- Events on member calendars show the member's name: `Bathroom (Huskie)`
+- Tasks appear prefixed with 📋: `📋 Take out trash (Huskie)`
+- Recurring events are fully expanded (daily, weekly, etc.)
 
-### Calendar
+### Sensors (Per Member)
 
 | Entity | Description |
 |--------|-------------|
-| `calendar.homechart_calendar` | Combined calendar showing events and tasks |
+| `sensor.[member]_tasks_due_today` | Tasks due today for this member |
+| `sensor.[member]_overdue_tasks` | Overdue tasks for this member |
+| `sensor.[member]_upcoming_tasks` | Tasks due in the next 7 days |
 
-Tasks appear as all-day events prefixed with 📋.
+Each sensor includes attributes with full task details including names, due dates, projects, and assignees.
 
 ### Todo Lists
 
 | Entity | Description |
 |--------|-------------|
-| `todo.homechart_tasks` | Main task list (tasks not in projects) |
-| `todo.homechart_tasks_[project]` | One list per Homechart project |
+| `todo.homechart_tasks` | All tasks (household-wide view) |
+| `todo.homechart_[project]` | One list per Homechart project |
 
 ## Services
 
@@ -86,6 +118,8 @@ data:
   name: "Take out trash"
   due_date: "2024-01-15"
   details: "Don't forget recycling"
+  assignees:
+    - "019480ff-5783-75c8-8358-25e402beadcb"  # Member's authAccountID
 ```
 
 ### `homechart.complete_task`
@@ -110,6 +144,8 @@ data:
   time_start: "14:30"
   duration: 60
   location: "123 Main St"
+  participants:
+    - "019480ff-5783-75c8-8358-25e402beadcb"  # Member's authAccountID
 ```
 
 ## Options
@@ -135,30 +171,52 @@ automation:
           entity_id: media_player.kitchen_speaker
         data:
           message: >
-            Good morning! You have {{ states('sensor.tasks_due_today') }} tasks due today
-            {% if states('sensor.overdue_tasks') | int > 0 %}
-            and {{ states('sensor.overdue_tasks') }} overdue tasks
+            Good morning! You have {{ states('sensor.huskie_tasks_due_today') }} tasks due today
+            {% if states('sensor.huskie_overdue_tasks') | int > 0 %}
+            and {{ states('sensor.huskie_overdue_tasks') }} overdue tasks
             {% endif %}
 ```
 
-### Voice Assistant Task Query
+### Voice Assistant Integration
 
-For use with your local LLM voice assistant, expose these sensors and create intents or tool calls to query task data.
+Perfect for local LLM voice assistants (like Wyoming/Qwen). Expose sensors and calendars for natural queries:
+
+- "What's on my calendar today?"
+- "Do I have any overdue tasks?"
+- "What tasks are due this week?"
+
+## Understanding Calendar Separation
+
+To avoid duplicate events when viewing multiple calendars:
+
+- **Household Calendar**: Only shows events/tasks with **no participants/assignees** - these are household-wide items
+- **Member Calendars**: Only show events/tasks **assigned to that specific member**
+
+This way, if you enable all calendars, each event appears exactly once.
 
 ## Troubleshooting
 
 ### "Invalid API key" error
-- Make sure you created an API key, not just copied your password
-- API keys are long strings that look like random characters
-- Try creating a new API key
+- Make sure you're using the `ID:TOKEN` format, not just the token
+- The ID and Token are both UUID-format strings
+- Try creating a new session and getting fresh credentials
 
 ### Tasks not updating
-- The integration polls every 5 minutes by default
+- The integration polls every 1 minute
 - You can manually refresh by reloading the integration
+
+### Missing per-member calendars
+- Check the logs for errors during setup
+- Ensure your Homechart household has members configured
 
 ### Self-hosted connection issues
 - Ensure your Homechart instance is accessible from Home Assistant
 - Check that you're using the correct URL (include `https://` if applicable)
+- Default is `https://web.homechart.app`
+
+### Reconfigure not working
+- Make sure you have the latest version of the integration
+- The reconfigure flow was added in a recent update
 
 ## Contributing
 
