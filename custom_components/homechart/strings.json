@@ -25,7 +25,9 @@
       "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "This Homechart account is already configured"
+      "already_configured": "This Homechart account is already configured",
+      "reconfigure_successful": "Configuration updated successfully",
+      "reconfigure_failed": "Reconfiguration failed"
     }
   },
   "options": {
