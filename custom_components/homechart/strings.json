@@ -9,6 +9,14 @@
           "url": "Homechart URL (for self-hosted)",
           "name": "Display Name"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Homechart",
+        "description": "Update your Homechart credentials. Go to Settings > Sessions > click +Add. Copy both the session ID and TOKEN shown. Enter them as: ID:TOKEN",
+        "data": {
+          "api_key": "Session ID:Token",
+          "url": "Homechart URL (for self-hosted)"
+        }
       }
     },
     "error": {
