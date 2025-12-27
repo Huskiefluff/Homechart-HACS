@@ -447,14 +447,14 @@ class HomechartApi:
                     "HOMECHART DEBUG - First event raw data: %s",
                     raw_items[0]
                 )
-                # Log any event with recurrence
-                for item in raw_items[:30]:
+                # Log ALL events with recurrence
+                for item in raw_items:
                     if item.get("recurrence"):
                         _LOGGER.warning(
-                            "HOMECHART DEBUG - Event WITH recurrence: %s",
-                            item
+                            "HOMECHART DEBUG - Recurring event '%s': recurrence=%s",
+                            item.get("name"),
+                            item.get("recurrence"),
                         )
-                        break
             
             for item in raw_items:
                 event_start = None
