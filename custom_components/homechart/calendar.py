@@ -474,7 +474,7 @@ class HomechartMemberCalendar(CoordinatorEntity, CalendarEntity):
 
         # If no recurrence, just convert normally
         if not hc_event.recurrence:
-            cal_event = self._convert_homechart_event(hc_event, tz)
+            cal_event = self._convert_homechart_event_on_date(hc_event, hc_event.date_start, tz)
             return [cal_event] if cal_event else []
 
         recurrence = hc_event.recurrence
@@ -482,7 +482,7 @@ class HomechartMemberCalendar(CoordinatorEntity, CalendarEntity):
         
         # If separation is 0, no real recurrence
         if not separation:
-            cal_event = self._convert_homechart_event(hc_event, tz)
+            cal_event = self._convert_homechart_event_on_date(hc_event, hc_event.date_start, tz)
             return [cal_event] if cal_event else []
 
         events = []
